@@ -27,7 +27,7 @@ def byteListForChar(char):
 # For the string, create the big list of bit values (columns), left to right.
 def makeVRasters(string):
     bits = []
-    string += string[0]
+    string += string[0] # duplicate the first char onto the end of the data for easier scrolling.
     for char in string:
         # bl is the list of *horizontal* rasters for the char
         bl = byteListForChar(char)
@@ -71,6 +71,6 @@ def displayRaster(display, r):
     display.write_display()
 
 
-vrasters = makeVRasters(" This is a test.")
+vrasters = makeVRasters("This is a test.")
 # print(f"vraster: {vrasters} (len {len(vrasters)})")
 displayVRasters(vrasters, 0.03)
