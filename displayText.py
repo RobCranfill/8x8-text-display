@@ -1,8 +1,8 @@
-# fuggit - do it myself
+# displayText.py
+# (c)2020 robcranfill@gmail.com
+# Code to display a scrolling message on an Adafruit 8x8 LED matrix.
 #
-# TODO: make a version of font.py that has *vertical* raster data?
-#
-import font  # This is my "font" code, found in this directory.
+import font  # This is my data for a simple 8x8 font, found in this directory.
 import time
 from Adafruit_LED_Backpack import Matrix8x8
 

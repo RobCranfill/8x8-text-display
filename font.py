@@ -1,5 +1,6 @@
 '''
-Font.py?
+Font.py
+  Horizontal raster data for a simple 8x8 font.
 '''
 import time
 
