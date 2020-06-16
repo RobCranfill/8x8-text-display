@@ -8,8 +8,10 @@ The two most important files here are:
 ## References
  * https://learn.adafruit.com/adafruit-led-backpack/1-2-8x8-matrix
  * https://github.com/adafruit/Adafruit_Python_LED_Backpack
- 
+
 ## To Do:
  * Clear display when done
  * Accept a "delay" parameter; how?
  * Somebody is eating the input whitespace - who? (I think it's the sending program, not the server.)
+ * Re-write my code to be more object-y? Remove globals where possible?
+  
