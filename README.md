@@ -7,5 +7,5 @@ The two most important files here are:
 
 ## TODO:
  * Clear display when done
- * Accept a "delay" paramter; how?
+ * Accept a "delay" parameter; how?
  * Somebody is eating the input whitespace - who?
