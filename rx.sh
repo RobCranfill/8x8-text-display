@@ -1,2 +1,2 @@
 #!/bin/bash
-python3 displayServer.py
+python3 displayServer.py $1
