@@ -7,11 +7,14 @@ from Adafruit_LED_Backpack import Matrix8x8
 import font  # This is my data for a simple 8x8 font, found in this directory.
 
 import socketserver
+import sys
 import threading
 import time
 
 thread_ = threading.Thread()
 threadRun_ = False
+displayDelay_ = 0.1
+
 
 class aTCPSocketHandler(socketserver.BaseRequestHandler):
     """
@@ -25,10 +28,11 @@ class aTCPSocketHandler(socketserver.BaseRequestHandler):
     def handle(self):
         global thread_
         global threadRun_
+        global displayDelay_
 
         # self.request is the TCP socket connected to the client
         self.data = self.request.recv(1024).strip()
-        print(f" Recieved from {self.client_address[0]}: {self.data}")
+        print(f" Recieved new message from {self.client_address[0]}: {self.data}")
 
         # just send back the same data, but upper-cased
         # no; self.request.sendall(self.data.upper())
@@ -37,14 +41,14 @@ class aTCPSocketHandler(socketserver.BaseRequestHandler):
         if thread_.isAlive():
             threadRun_ = False
             while thread_.isAlive():
-                print(" Sleeping to wait for old thread to die....")
+                # print(" Sleeping to wait for old thread to die....")
                 time.sleep(1)
 
         message = self.data.decode("UTF-8")
         vrasters = makeVRasters(message)
 
-        thread_ = threading.Thread(target=displayVRasters, args=(vrasters,0.1,))
-        print(" Starting new displayVRasters thread....")
+        thread_ = threading.Thread(target=displayVRasters, args=(vrasters,displayDelay_,))
+        # print(" Starting new displayVRasters thread....")
         threadRun_ = True
         thread_.start()
 
@@ -59,7 +63,10 @@ def byteListForChar(char):
 #
 def makeVRasters(string):
     bits = []
-    string += string[0] # duplicate the first char onto the end of the data for easier scrolling. TODO: needed?
+    if len(string) == 0: # is there a better way to handle this null-input case?
+        string = " "
+    else:
+        string += string[0] # duplicate the first char onto the end of the data for easier scrolling. TODO: needed?
     for char in string:
         # bl is the list of *horizontal* rasters for the char
         bl = byteListForChar(char)
@@ -71,7 +78,7 @@ def makeVRasters(string):
                     thisVR += (1 << (7-hRasterIndex))
             bits.append(thisVR)
 
-    print(f"vraster (len {len(bits)}): {bits}")
+    # print(f"vraster (len {len(bits)}): {bits}")
     return bits
 
 
@@ -84,10 +91,7 @@ def displayVRasters(vrs, delay):
     display = Matrix8x8.Matrix8x8()
     display.begin()
 
-    print(f" displayVRasters: threadRun_ = {threadRun_}")
-
     while threadRun_:
-        print(" displayVRasters: threadRun_ still true.")
         # get the 8x8 list bits to display
         for i in range(len(vrs)-8):
             dispBits = []
@@ -115,11 +119,16 @@ def clearDisplay():
 
 if __name__ == "__main__":
 
+#    global displayDelay_
+
+    if len(sys.argv) > 1:
+        displayDelay_ = float(sys.argv[1])
+
     # instantiate the server, and bind to host and port
     server = socketserver.TCPServer(("localhost", 3141), aTCPSocketHandler)
     try:
         # activate the server; this will keep running until Ctrl-C
-        print(f"Message server listening on port 3141")
+        print(f"Message server listening on port 3141; delay {displayDelay_}")
         server.serve_forever()
     except KeyboardInterrupt:
         server.server_close()
