@@ -11,6 +11,7 @@ import sys
 import threading
 import time
 
+# globals. sorry.
 thread_ = threading.Thread()
 threadRun_ = False
 displayDelay_ = 0.1
@@ -32,31 +33,33 @@ class aTCPSocketHandler(socketserver.BaseRequestHandler):
 
         # self.request is the TCP socket connected to the client
         self.data = self.request.recv(1024).strip()
-        print(f" Recieved new message from {self.client_address[0]}: {self.data}")
+        print(f" Recieved new command from {self.client_address[0]}: {self.data}")
 
-        # just send back the same data, but upper-cased
-        # no; self.request.sendall(self.data.upper())
-        self.request.sendall(b"OK\n")
+        commandAndMessage = self.data.decode("UTF-8")
+        command, message = commandAndMessage.split(" ", 1)
+        print(f"command, message: '{command}', '{message}'")
 
-        if thread_.isAlive():
-            threadRun_ = False
-            while thread_.isAlive():
-                # print(" Sleeping to wait for old thread to die....")
-                time.sleep(1)
-
-        message = self.data.decode("UTF-8")
-        vrasters = makeVRasters(message)
-
-        thread_ = threading.Thread(target=displayVRasters, args=(vrasters,displayDelay_,))
-        # print(" Starting new displayVRasters thread....")
-        threadRun_ = True
-        thread_.start()
-
-
-# return a list of the bytes for the given character
-def byteListForChar(char):
-    bits = font.FontData[char]
-    return bits
+        if command == "STOP":
+            print("STOP not implemented yet")
+            self.request.sendall(b"OK\n")
+        elif command == "DELAY":
+            displayDelay_ = float(message)
+            self.request.sendall(b"OK\n")
+        elif command == "DISPLAY":
+            if thread_.isAlive():
+                threadRun_ = False
+                while thread_.isAlive():
+                    # print(" Sleeping to wait for old thread to die....")
+                    time.sleep(0.1)
+            vrasters = makeVRasters(message)
+            thread_ = threading.Thread(target=displayVRasters, args=(vrasters,))
+            # print(" Starting new displayVRasters thread....")
+            threadRun_ = True
+            thread_.start()
+            self.request.sendall(b"OK\n")
+        else:
+            print(f"UNKNOWN COMMAND '{command}'")
+            self.request.sendall(b"UNKNOWN COMMAND '{}'\n".format(command))
 
 
 # For the string, create the big list of bit values (columns), left to right.
@@ -84,9 +87,11 @@ def makeVRasters(string):
 
 # Rotate the list of vertical rasters thru the display, forever.
 # The input data already has the first char duplicated at the end, for ease of rotation.
+# Uses global displayDelay_ so we can change that after creating the thread.
 #
-def displayVRasters(vrs, delay):
+def displayVRasters(vrs):
     global threadRun_
+    global displayDelay_
 
     display = Matrix8x8.Matrix8x8()
     display.begin()
@@ -98,11 +103,13 @@ def displayVRasters(vrs, delay):
             for j in range(8):
                 dispBits.append(vrs[i+j])
             displayRaster(display, dispBits)
-            time.sleep(delay)
+            time.sleep(displayDelay_)
             if not threadRun_:
                 break
 
 # display the 8 raster lines
+# This is funky because I have my 8x8 matrix mounted sideways!
+#
 def displayRaster(display, r):
     display.clear()
     for i in range(8):
@@ -111,6 +118,15 @@ def displayRaster(display, r):
             rtest = 1 if (ri & (1 << j)) else 0
             display.set_pixel(j, i, rtest)
     display.write_display()
+
+
+# Return a list of the bytes for the given character.
+# TODO: catch missing chars?
+#
+def byteListForChar(char):
+    bits = font.FontData[char]
+    return bits
+
 
 # TODO: hold on to the display object so we can clear it
 def clearDisplay():
@@ -128,7 +144,7 @@ if __name__ == "__main__":
     server = socketserver.TCPServer(("localhost", 3141), aTCPSocketHandler)
     try:
         # activate the server; this will keep running until Ctrl-C
-        print(f"Message server listening on port 3141; delay {displayDelay_}")
+        print(f"Message server listening on port 3141; defauly delay {displayDelay_}")
         server.serve_forever()
     except KeyboardInterrupt:
         server.server_close()
