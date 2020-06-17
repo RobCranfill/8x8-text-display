@@ -13,6 +13,7 @@ The two most important files here are:
  * https://youtu.be/UH1qVhfL6Mw
  
 ## To Do:
+ * Allow specification of port number.
  * Something is eating leading and trailing input whitespace - who? (I think it's the sending program, not the server.)
  * Re-write my code to be more object-y? Remove globals where possible?
  * <strike>Clear display when done</strike>
