@@ -1,8 +1,8 @@
 # displayText.py
 # (c)2020 robcranfill@gmail.com
 # A service to display scrolling messages on an Adafruit 8x8 LED matrix.
+# Optional arguments: [port number]
 #
-
 from Adafruit_LED_Backpack import Matrix8x8
 import font  # This is my data for a simple 8x8 font, found in this directory.
 
@@ -15,8 +15,17 @@ import time
 # globals. sorry.
 thread_ = threading.Thread()
 threadRun_ = False
-displayDelay_ = 0.1
+displayDelay_ = 0.025 # this is a nice default for my Pi3B
 display_ = None
+
+# if true, log to sysloc, otherwise print to console.
+printToLog_ = False
+
+def printOrLog(str):
+    if printToLog_:
+        printOrLog(str)
+    else:
+        print(str)
 
 
 class aTCPSocketHandler(socketserver.BaseRequestHandler):
@@ -35,7 +44,7 @@ class aTCPSocketHandler(socketserver.BaseRequestHandler):
 
         # self.request is the TCP socket connected to the client
         self.data = self.request.recv(1024).strip()
-        syslog.syslog(f"Recieved new command from {self.client_address[0]}: {self.data}")
+        printOrLog(f"Recieved new command from {self.client_address[0]}: {self.data}")
 
         commandAndMessage = self.data.decode("UTF-8")
         message = ""
@@ -67,7 +76,7 @@ class aTCPSocketHandler(socketserver.BaseRequestHandler):
             thread_.start()
             self.request.sendall(b"OK\n")
         else:
-            syslog.syslog(syslog.LOG_ERR, f"UNKNOWN COMMAND '{command}'")
+            printOrLog(syslog.LOG_ERR, f"UNKNOWN COMMAND '{command}'")
             self.request.sendall("UNKNOWN COMMAND '{}'\n".format(command).encode())
 
 
@@ -103,30 +112,25 @@ def displayVRasters(vrs):
     global displayDelay_
     global display_
 
-    display_ = Matrix8x8.Matrix8x8()
-    display_.begin()
-
     while threadRun_:
-        # get the 8x8 list bits to display
+        # get the proper 8x8 bits to display
         for i in range(len(vrs)-8):
-            dispBits = []
-            for j in range(8):
-                dispBits.append(vrs[i+j])
-            displayRaster(display_, dispBits)
+            displayRaster(display_, vrs[i:i+8])
             time.sleep(displayDelay_)
             if not threadRun_:
                 break
 
-# display the 8 raster lines
-# This is funky because I have my 8x8 matrix mounted sideways!
+
+# Display the 8 raster lines
+# This is slightly funky because I have my 8x8 matrix mounted sideways - YMMV!
 #
-def displayRaster(display, r):
+def displayRaster(display, rasters):
     display.clear()
     for i in range(8):
-        ri = r[i]
         for j in range(8):
-            rtest = 1 if (ri & (1 << j)) else 0
-            display.set_pixel(j, i, rtest)
+            # rtest = 1 if (rasters[i] & (1 << j)) else 0 # fixme
+            # display.set_pixel(j, i, rtest)
+            display.set_pixel(j, i, rasters[i] & (1<<j))
     display.write_display()
 
 
@@ -146,18 +150,23 @@ def clearDisplay():
     return
 
 
+# Main
+# Optional args: [port number]
+#
 if __name__ == "__main__":
 
-#    global displayDelay_
-
+    portNumber = 3141 # get it?
     if len(sys.argv) > 1:
-        displayDelay_ = float(sys.argv[1])
+        portNumber = int(sys.argv[1])
 
-    # instantiate the server, and bind to host and port
-    server = socketserver.TCPServer(("localhost", 3141), aTCPSocketHandler)
+    display_ = Matrix8x8.Matrix8x8()
+    display_.begin()
+
+    # Instantiate the server, and bind to host and port.
+    server = socketserver.TCPServer(("localhost", portNumber), aTCPSocketHandler)
     try:
-        # activate the server; this will keep running until Ctrl-C
-        syslog.syslog(f"Message server listening on port 3141; default delay {displayDelay_}")
+        # Activate the server; this will keep running until ctrl-C (or SIGINT?)
+        printOrLog(f"Message server listening on port {portNumber}; default delay {displayDelay_}")
         server.serve_forever()
     except KeyboardInterrupt:
         server.server_close()
