@@ -19,11 +19,11 @@ displayDelay_ = 0.025 # this is a nice default for my Pi3B
 display_ = None
 
 # if true, log to sysloc, otherwise print to console.
-printToLog_ = False
+printToLog_ = True
 
 def printOrLog(str):
     if printToLog_:
-        printOrLog(str)
+        syslog.syslog(str)
     else:
         print(str)
 
