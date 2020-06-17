@@ -8,6 +8,7 @@ import font  # This is my data for a simple 8x8 font, found in this directory.
 
 import socketserver
 import sys
+import syslog
 import threading
 import time
 
@@ -34,7 +35,7 @@ class aTCPSocketHandler(socketserver.BaseRequestHandler):
 
         # self.request is the TCP socket connected to the client
         self.data = self.request.recv(1024).strip()
-        print(f" Recieved new command from {self.client_address[0]}: {self.data}")
+        syslog.syslog(f"Recieved new command from {self.client_address[0]}: {self.data}")
 
         commandAndMessage = self.data.decode("UTF-8")
         message = ""
@@ -42,12 +43,12 @@ class aTCPSocketHandler(socketserver.BaseRequestHandler):
             command = commandAndMessage
         else:
             command, message = commandAndMessage.split(None, 1)
-        print(f"command, message: '{command}', '{message}'")
+        # print(f"command, message: '{command}', '{message}'")
 
         if command == "STOP":
             threadRun_ = False
             while thread_.isAlive():
-                # print(" Sleeping to wait for old thread to die....")
+                # print("Sleeping to wait for old thread to die....")
                 time.sleep(0.1)
             clearDisplay()
             self.request.sendall(b"OK\n")
@@ -57,17 +58,17 @@ class aTCPSocketHandler(socketserver.BaseRequestHandler):
         elif command == "DISPLAY":
             threadRun_ = False
             while thread_.isAlive():
-                # print(" Sleeping to wait for old thread to die....")
+                # print("Sleeping to wait for old thread to die....")
                 time.sleep(0.1)
             vrasters = makeVRasters(message)
             thread_ = threading.Thread(target=displayVRasters, args=(vrasters,))
-            # print(" Starting new displayVRasters thread....")
+            # print("Starting new displayVRasters thread....")
             threadRun_ = True
             thread_.start()
             self.request.sendall(b"OK\n")
         else:
-            print(f"UNKNOWN COMMAND '{command}'")
-            self.request.sendall(b"UNKNOWN COMMAND '{}'\n".format(command))
+            syslog.syslog(syslog.LOG_ERR, f"UNKNOWN COMMAND '{command}'")
+            self.request.sendall("UNKNOWN COMMAND '{}'\n".format(command).encode())
 
 
 # For the string, create the big list of bit values (columns), left to right.
@@ -139,8 +140,9 @@ def byteListForChar(char):
 
 def clearDisplay():
     global display_
-    display_.clear()
-    display_.write_display()
+    if display_:
+        display_.clear()
+        display_.write_display()
     return
 
 
@@ -155,7 +157,7 @@ if __name__ == "__main__":
     server = socketserver.TCPServer(("localhost", 3141), aTCPSocketHandler)
     try:
         # activate the server; this will keep running until Ctrl-C
-        print(f"Message server listening on port 3141; default delay {displayDelay_}")
+        syslog.syslog(f"Message server listening on port 3141; default delay {displayDelay_}")
         server.serve_forever()
     except KeyboardInterrupt:
         server.server_close()

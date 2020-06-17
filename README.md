@@ -10,13 +10,7 @@ The two most important files here are:
  * https://github.com/adafruit/Adafruit_Python_LED_Backpack
 
 ## To Do:
- * Clear display when done
+ * <strike>Clear display when done</strike>
  * Accept a "delay" parameter; how?
  * Somebody is eating the input whitespace - who? (I think it's the sending program, not the server.)
  * Re-write my code to be more object-y? Remove globals where possible?
-  
-## Next version?
-Commands:
-  * "DISPLAY" & string
-  * "DELAY" & float
-  * "STOP"
