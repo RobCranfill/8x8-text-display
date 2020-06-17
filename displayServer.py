@@ -15,6 +15,7 @@ import time
 thread_ = threading.Thread()
 threadRun_ = False
 displayDelay_ = 0.1
+display_ = None
 
 
 class aTCPSocketHandler(socketserver.BaseRequestHandler):
@@ -36,21 +37,28 @@ class aTCPSocketHandler(socketserver.BaseRequestHandler):
         print(f" Recieved new command from {self.client_address[0]}: {self.data}")
 
         commandAndMessage = self.data.decode("UTF-8")
-        command, message = commandAndMessage.split(" ", 1)
+        message = ""
+        if commandAndMessage.find(" ") == -1:
+            command = commandAndMessage
+        else:
+            command, message = commandAndMessage.split(None, 1)
         print(f"command, message: '{command}', '{message}'")
 
         if command == "STOP":
-            print("STOP not implemented yet")
+            threadRun_ = False
+            while thread_.isAlive():
+                # print(" Sleeping to wait for old thread to die....")
+                time.sleep(0.1)
+            clearDisplay()
             self.request.sendall(b"OK\n")
         elif command == "DELAY":
             displayDelay_ = float(message)
             self.request.sendall(b"OK\n")
         elif command == "DISPLAY":
-            if thread_.isAlive():
-                threadRun_ = False
-                while thread_.isAlive():
-                    # print(" Sleeping to wait for old thread to die....")
-                    time.sleep(0.1)
+            threadRun_ = False
+            while thread_.isAlive():
+                # print(" Sleeping to wait for old thread to die....")
+                time.sleep(0.1)
             vrasters = makeVRasters(message)
             thread_ = threading.Thread(target=displayVRasters, args=(vrasters,))
             # print(" Starting new displayVRasters thread....")
@@ -92,9 +100,10 @@ def makeVRasters(string):
 def displayVRasters(vrs):
     global threadRun_
     global displayDelay_
+    global display_
 
-    display = Matrix8x8.Matrix8x8()
-    display.begin()
+    display_ = Matrix8x8.Matrix8x8()
+    display_.begin()
 
     while threadRun_:
         # get the 8x8 list bits to display
@@ -102,7 +111,7 @@ def displayVRasters(vrs):
             dispBits = []
             for j in range(8):
                 dispBits.append(vrs[i+j])
-            displayRaster(display, dispBits)
+            displayRaster(display_, dispBits)
             time.sleep(displayDelay_)
             if not threadRun_:
                 break
@@ -128,9 +137,11 @@ def byteListForChar(char):
     return bits
 
 
-# TODO: hold on to the display object so we can clear it
 def clearDisplay():
-        return
+    global display_
+    display_.clear()
+    display_.write_display()
+    return
 
 
 if __name__ == "__main__":
@@ -144,7 +155,7 @@ if __name__ == "__main__":
     server = socketserver.TCPServer(("localhost", 3141), aTCPSocketHandler)
     try:
         # activate the server; this will keep running until Ctrl-C
-        print(f"Message server listening on port 3141; defauly delay {displayDelay_}")
+        print(f"Message server listening on port 3141; default delay {displayDelay_}")
         server.serve_forever()
     except KeyboardInterrupt:
         server.server_close()
